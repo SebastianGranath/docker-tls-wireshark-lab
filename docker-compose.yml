@@ -1,0 +1,50 @@
+services:
+
+  certs:
+    image: alpine:latest
+    volumes:
+      - ./certs:/certs
+      - ./scripts:/scripts
+    command:
+      - sh
+      - /scripts/generate-certs.sh
+
+
+  server:
+    build: ./server
+    environment:
+      MODE: ${MODE}
+    volumes:
+      - ./certs:/certs
+    ports:
+      - "8443:8443"
+    depends_on:
+      - certs
+
+
+  client:
+    build: ./client
+    environment:
+      MODE: ${MODE}
+    volumes:
+      - ./certs:/certs
+      - ./logs:/tmp      # sslkeys.log written here
+    depends_on:
+      - server
+
+
+  wireshark:
+    image: lscr.io/linuxserver/wireshark:latest
+    network_mode: host
+
+    volumes:
+      - ./captures:/captures
+      - ./config:/config
+      - ./logs:/logs     # expose sslkeys.log to Wireshark
+
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+
+    ports:
+      - "3000:3000"
